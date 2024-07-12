@@ -22,12 +22,11 @@ class Network(object):
 
 
     def relu(self,x):
-        """TODO: Implement the relu function."""
-        raise NotImplementedError
+        return np.maximum(0,x)
 
     def relu_derivative(self,x):
-        """TODO: Implement the derivative of the relu function."""
-        raise NotImplementedError
+        v = self.relu(x)
+        return np.ceil(np.divide(v, np.max(v)))
 
 
     def cross_entropy_loss(self, logits, y_true):
@@ -44,8 +43,9 @@ class Network(object):
                     "y_true": numpy array of shape (batch_size,) containing the true labels of the batch
             Returns: a numpy array of shape (10,batch_size) where each column is the gradient of the loss with respect to y_pred (the output of the network before the softmax layer) for the given example.
         """
-        # TODO: Implement
-        raise NotImplementedError
+        yt_onehot = np.eye(10)[y_true].T
+        zL = softmax(logits)
+        return zL-yt_onehot
 
 
     def forward_propagation(self, X):
@@ -57,8 +57,29 @@ class Network(object):
         ZL = 1
         forward_outputs = []
 
-        # TODO: Implement the forward function
-        raise NotImplementedError
+
+        for l in range(self.num_layers+1):
+            if(l==0):
+                forward_outputs.append(X.T)
+                continue
+
+            vl = []
+            zl = []
+            for i in range(np.shape(X)[1]):
+                vl.append(np.matmul(self.parameters['W' + str(l)], forward_outputs[2*l-2][i]) + np.reshape(self.parameters['b' + str(l)], (np.shape(self.parameters['b' + str(l)])[0],)))
+                if(l != self.num_layers):
+                    zl.append(self.relu(vl[i]))
+                else:
+                    zl.append(softmax(vl[i]))
+
+            forward_outputs.append(vl)
+
+            if(l != self.num_layers):
+                forward_outputs.append(zl)
+            else:
+                ZL = zl
+    
+
         return ZL, forward_outputs
 
     def backpropagation(self, ZL, Y, forward_outputs):
