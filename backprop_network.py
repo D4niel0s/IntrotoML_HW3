@@ -63,10 +63,13 @@ class Network(object):
                 forward_outputs.append(X.T)
                 continue
 
+            #vl and zl will be matrices that will store vl[i] for each sample 0<=i<batch_size
             vl = []
             zl = []
             for i in range(np.shape(X)[1]):
-                vl.append(np.matmul(self.parameters['W' + str(l)], forward_outputs[2*l-2][i]) + np.reshape(self.parameters['b' + str(l)], (np.shape(self.parameters['b' + str(l)])[0],)))
+                #For some reason b (a vector) is coded as a matrix in the parameters of the network, so I need to reshape it into a vector
+                # forward_outputs[2*l-2][i] is z_l of the i'th sample
+                vl.append((self.parameters['W' + str(l)] @ forward_outputs[2*l-2][i]) + np.reshape(self.parameters['b' + str(l)], (np.shape(self.parameters['b' + str(l)])[0],)))
                 if(l != self.num_layers):
                     zl.append(self.relu(vl[i]))
                 else:
