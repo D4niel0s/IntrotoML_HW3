@@ -76,11 +76,11 @@ class Network(object):
                     zl.append(softmax(vl[i]))
 
 
-            forward_outputs.append(vl)
+            forward_outputs.append(np.array(vl))
             if(l != self.num_layers):
-                forward_outputs.append(zl)
+                forward_outputs.append(np.array(zl))
             else:
-                ZL = zl
+                ZL = np.array(zl)
     
         return ZL, forward_outputs
 
@@ -95,7 +95,14 @@ class Network(object):
         
         """
         grads = {}
-        
+
+        batch_size = np.shape(forward_outputs[0])[0]
+
+        #Each row of deltaL is z_L - y of the corresponding sample
+        deltaL = self.cross_entropy_derivative(forward_outputs[2*self.num_layers - 1].T, Y).T
+
+        deltaL_1 = 1
+
         #TODO: Implement the backward function
         raise NotImplementedError
         return grads
