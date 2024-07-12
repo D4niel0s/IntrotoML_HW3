@@ -72,14 +72,13 @@ class Network(object):
                 else:
                     zl.append(softmax(vl[i]))
 
-            forward_outputs.append(vl)
 
+            forward_outputs.append(vl)
             if(l != self.num_layers):
                 forward_outputs.append(zl)
             else:
                 ZL = zl
     
-
         return ZL, forward_outputs
 
     def backpropagation(self, ZL, Y, forward_outputs):
