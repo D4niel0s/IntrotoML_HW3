@@ -75,17 +75,18 @@ class Network(object):
                                 grads["db" + str(l)] is a numpy array of shape (sizes[l],1).
         
         """
+        batch_size = np.shape(Y)[0]
         grads = {}
-        batch_size = Y.shape[0]
 
         L = self.num_layers
         deltaL = self.cross_entropy_derivative(ZL, Y)
-        grads["dW" + str(L)] = np.matmul(deltaL, forward_outputs[L - 1].T)/batch_size
+        grads["dW" + str(L)] = np.matmul(deltaL, forward_outputs[L-1].T)/batch_size
         grads["db" + str(L)] = np.average(deltaL, axis=1, keepdims=True)
 
         deltaL_1 = np.matmul(self.parameters['W'+str(L)].T, deltaL)
-        calc = np.multiply(deltaL_1, self.relu_derivative(forward_outputs[L - 1]))
-        grads["dW" + str(L-1)] = np.matmul(calc, forward_outputs[L - 2].T)/batch_size
+        calc = deltaL_1 * self.relu_derivative(forward_outputs[L-1])
+
+        grads["dW" + str(L-1)] = np.matmul(calc, forward_outputs[L-2].T)/batch_size
         grads["db" + str(L-1)] = np.average(calc, axis=1, keepdims=True)
 
         nextD = deltaL_1
@@ -100,6 +101,7 @@ class Network(object):
             nextD = curD
 
         return grads
+
 
     def sgd_step(self, grads, learning_rate):
         """
