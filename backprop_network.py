@@ -22,7 +22,7 @@ class Network(object):
 
 
     def relu(self,x):
-        return np.maximum(0,x)
+        return np.maximum(x,0)
 
     def relu_derivative(self,x):
         return (x > 0)*1
@@ -43,7 +43,8 @@ class Network(object):
             Returns: a numpy array of shape (10,batch_size) where each column is the gradient of the loss with respect to y_pred (the output of the network before the softmax layer) for the given example.
         """
         yt_onehot = np.eye(10)[y_true].T
-        return softmax(logits)-yt_onehot
+        zL = softmax(logits, axis=0)
+        return zL - yt_onehot
 
 
     def forward_propagation(self, X):
@@ -58,9 +59,9 @@ class Network(object):
         forward_outputs[0] = X
 
         for l in range(1, self.num_layers):
-            forward_outputs[l] = self.relu(np.matmul(self.parameters['W'+str(l)], forward_outputs[l-1]) + self.parameters['b'+ str(l)])
+            forward_outputs[l] = (self.parameters['W'+str(l)] @ self.relu(forward_outputs[l-1])) + self.parameters['b'+ str(l)]
 
-        ZL = np.matmul(self.parameters['W'+str(self.num_layers)], forward_outputs[self.num_layers-1]) + self.parameters['b'+ str(self.num_layers)]
+        ZL = (self.parameters['W'+str(self.num_layers)] @ self.relu(forward_outputs[self.num_layers-1])) + self.parameters['b'+ str(self.num_layers)]
 
         
         return ZL, forward_outputs
@@ -75,27 +76,27 @@ class Network(object):
                                 grads["db" + str(l)] is a numpy array of shape (sizes[l],1).
         
         """
-        batch_size = np.shape(Y)[0]
         grads = {}
-
+        batch_size = np.shape(Y)[0]
         L = self.num_layers
+
         deltaL = self.cross_entropy_derivative(ZL, Y)
-        grads["dW" + str(L)] = np.matmul(deltaL, forward_outputs[L-1].T)/batch_size
+        grads["dW" + str(L)] = (deltaL @ self.relu(forward_outputs[L-1]).T)/batch_size
         grads["db" + str(L)] = np.average(deltaL, axis=1, keepdims=True)
 
-        deltaL_1 = np.matmul(self.parameters['W'+str(L)].T, deltaL)
+        deltaL_1 = self.parameters['W'+str(L)].T @ deltaL
         calc = deltaL_1 * self.relu_derivative(forward_outputs[L-1])
 
-        grads["dW" + str(L-1)] = np.matmul(calc, forward_outputs[L-2].T)/batch_size
+        grads["dW" + str(L-1)] = (calc @ self.relu(forward_outputs[L-2]).T)/batch_size
         grads["db" + str(L-1)] = np.average(calc, axis=1, keepdims=True)
 
         nextD = deltaL_1
         for l in range(L-2, 0, -1):
-            calc = np.multiply(self.relu_derivative(forward_outputs[l+1]), nextD)
-            curD = np.matmul(self.parameters['W'+str(l+1)].T, calc)
+            calc = self.relu_derivative(forward_outputs[l+1]) * nextD
+            curD = self.parameters['W'+str(l+1)].T @ calc
 
-            calc = np.multiply(curD, self.relu_derivative(forward_outputs[l]))
-            grads["dW" + str(l)] = np.matmul(calc, forward_outputs[l-1].T)/batch_size
+            calc = curD * self.relu_derivative(forward_outputs[l])
+            grads["dW" + str(l)] = (calc @ self.relu(forward_outputs[l-1]).T)/batch_size
             grads["db" + str(l)] = np.average(calc, axis=1, keepdims=True)
 
             nextD = curD
