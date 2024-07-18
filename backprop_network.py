@@ -25,8 +25,7 @@ class Network(object):
         return np.maximum(x,0)
 
     def relu_derivative(self,x):
-        v = self.relu(x)
-        return np.ceil(np.divide(v,np.max(v)))
+        return (x>0)*1
 
 
     def cross_entropy_loss(self, logits, y_true):
