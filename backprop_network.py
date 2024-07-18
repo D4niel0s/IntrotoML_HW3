@@ -25,8 +25,7 @@ class Network(object):
         return np.maximum(0,x)
 
     def relu_derivative(self,x):
-        v = self.relu(x)
-        return np.ceil(np.divide(v, np.max(v)))
+        return (x > 0)*1
 
 
     def cross_entropy_loss(self, logits, y_true):
@@ -44,8 +43,7 @@ class Network(object):
             Returns: a numpy array of shape (10,batch_size) where each column is the gradient of the loss with respect to y_pred (the output of the network before the softmax layer) for the given example.
         """
         yt_onehot = np.eye(10)[y_true].T
-        zL = softmax(logits)
-        return zL-yt_onehot
+        return softmax(logits)-yt_onehot
 
 
     def forward_propagation(self, X):
@@ -55,33 +53,16 @@ class Network(object):
                     "forward_outputs" - A list of length self.num_layers containing the forward computation (parameters & output of each layer).
         """
         ZL = 1
-        forward_outputs = []
+        forward_outputs = [None]*self.num_layers
 
+        forward_outputs[0] = X
 
-        for l in range(self.num_layers+1):
-            if(l==0):
-                forward_outputs.append(X.T)
-                continue
+        for l in range(1, self.num_layers):
+            forward_outputs[l] = self.relu(np.matmul(self.parameters['W'+str(l)], forward_outputs[l-1]) + self.parameters['b'+ str(l)])
 
-            #vl and zl will be matrices that will store vl[i] for each sample 0<=i<batch_size
-            vl = []
-            zl = []
-            for i in range(np.shape(X)[1]):
-                #For some reason b (a vector) is coded as a matrix in the parameters of the network, so I need to reshape it into a vector
-                # forward_outputs[2*l-2][i] is z_l of the i'th sample
-                vl.append((self.parameters['W' + str(l)] @ forward_outputs[2*l-2][i]) + np.reshape(self.parameters['b' + str(l)], (np.shape(self.parameters['b' + str(l)])[0],)))
-                if(l != self.num_layers):
-                    zl.append(self.relu(vl[i]))
-                else:
-                    zl.append(softmax(vl[i]))
+        ZL = np.matmul(self.parameters['W'+str(self.num_layers)], forward_outputs[self.num_layers-1]) + self.parameters['b'+ str(self.num_layers)]
 
-
-            forward_outputs.append(np.array(vl))
-            if(l != self.num_layers):
-                forward_outputs.append(np.array(zl))
-            else:
-                ZL = np.array(zl)
-    
+        
         return ZL, forward_outputs
 
     def backpropagation(self, ZL, Y, forward_outputs):
@@ -95,18 +76,30 @@ class Network(object):
         
         """
         grads = {}
+        batch_size = Y.shape[0]
 
-        batch_size = np.shape(forward_outputs[0])[0]
+        L = self.num_layers
+        deltaL = self.cross_entropy_derivative(ZL, Y)
+        grads["dW" + str(L)] = np.matmul(deltaL, forward_outputs[L - 1].T)/batch_size
+        grads["db" + str(L)] = np.average(deltaL, axis=1, keepdims=True)
 
-        #Each row of deltaL is z_L - y of the corresponding sample
-        deltaL = self.cross_entropy_derivative(forward_outputs[2*self.num_layers - 1].T, Y).T
+        deltaL_1 = np.matmul(self.parameters['W'+str(L)].T, deltaL)
+        calc = np.multiply(deltaL_1, self.relu_derivative(forward_outputs[L - 1]))
+        grads["dW" + str(L-1)] = np.matmul(calc, forward_outputs[L - 2].T)/batch_size
+        grads["db" + str(L-1)] = np.average(calc, axis=1, keepdims=True)
 
-        deltaL_1 = 1
+        nextD = deltaL_1
+        for l in range(L-2, 0, -1):
+            calc = np.multiply(self.relu_derivative(forward_outputs[l+1]), nextD)
+            curD = np.matmul(self.parameters['W'+str(l+1)].T, calc)
 
-        #TODO: Implement the backward function
-        raise NotImplementedError
+            calc = np.multiply(curD, self.relu_derivative(forward_outputs[l]))
+            grads["dW" + str(l)] = np.matmul(calc, forward_outputs[l-1].T)/batch_size
+            grads["db" + str(l)] = np.average(calc, axis=1, keepdims=True)
+
+            nextD = curD
+
         return grads
-
 
     def sgd_step(self, grads, learning_rate):
         """
